@@ -1,8 +1,15 @@
-Economic Anxiety or Racial Resentment? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2016
+"Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2017"
 =======================================================================
 
 This is a working paper. [Standard caveat applies](https://memegenerator.net/instance/67249972/science-cat-peer-reviewed-or-it-didnt-happen). Forgive typos, especially in early drafts.
 
 ## Abstract
 
-> Does 'economic anxiety' explain attitudes toward immigration or can we better understand attitudes toward immigration as a part of racial resentment? This is a long-standing empirical debate in immigration opinion research and the election of Donald Trump, who consistently communicated anti-immigration hysteria on the campaign trail, has only intensified the salience of this debate. However, any focus on this debate by reference to the 2016 presidential election will struggle to distinguish the relative effects of 'economic anxiety' and racial resentment. I help settle this debate with a battery of analyses on attitudes toward immigration across the American National Election Studies and Voter Study Group data, spanning analyses on immigration opinion for white Americans from 1992 to 2016 at levels as granular as the state and the ZIP code. My analyses are unequivocal that racial resentment is reliably the largest and most precise predictor of attitudes toward immigration. Further analyses and simulations from a cherry-picked model most consistent with the 'economic anxiety' argument show that a standard deviation increase in racial resentment is still a greater magnitude effect than all 'economic anxiety' proxies combined. I close with implications for immigration opinion research, given its increased salience after 2016.
+*Conditionally accepted at [Social Science Journal](https://www.journals.elsevier.com/the-social-science-journal). Note: a previous version of this paper was known as "Economic Anxiety or Racial Resentment? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2016." Some feedback suggested refocusing on ethnocentrism in lieu of racial resentment. This made the paper a better academic fit (understandably so) but second-order latent concepts are what they are. That would, however, explain the directory name of `earr`.*
+
+*Related*:
+
+![](next-time.png)
+
+
+Does 'economic anxiety' explain attitudes toward immigration or can we better understand attitudes toward immigration as an outcome of ethnocentrism? This is a long-standing empirical debate in immigration opinion research and a debate that has struggled to distinguish the relative effects. I help settle this debate with a battery of analyses on attitudes toward immigration across the American National Election Studies and Voter Study Group data, spanning analyses on immigration opinion for white Americans from 1992 to 2017 at levels as granular as the state, county, core-based statistical area (CBSA), and the ZIP code. My analyses are unequivocal that ethnocentrism is reliably the largest and most precise predictor of attitudes toward immigration. Further analyses and simulations from models most consistent with the economic anxiety argument show that a standard deviation increase in ethnocentrism is still a greater or equal magnitude effect than all economic anxiety proxies combined. I close with implications for immigration opinion research.

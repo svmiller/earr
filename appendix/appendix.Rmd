@@ -1,0 +1,234 @@
+---
+output: 
+#  word_document:
+#    reference_docx: ~/Dropbox/miscelanea/svm-r-markdown-templates/svm-rmarkdown-word.docx
+  pdf_document:
+    citation_package: natbib
+    fig_caption: true
+    latex_engine: xelatex
+    dev: cairo_pdf
+    keep_tex: FALSE
+    toc: true
+    toc_depth: 2
+    template: ~/Dropbox/miscelanea/svm-r-markdown-templates/svm-latex-ms.tex
+title: "Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2017"
+subtitle: "Supplemental Appendix"
+author:
+- name: Steven V. Miller
+  affiliation: Clemson University
+  email: svmille@clemson.edu
+fontfamily: mathpazo
+fontfamilyoptions: sc, osf
+fontsize: 11pt
+tables: yes
+appendix: yes
+appendixletter: A
+header-includes:
+  - \usepackage{array}   
+  - \usepackage{caption}
+  - \usepackage{graphicx}
+  - \usepackage{siunitx}
+  - \usepackage[table]{xcolor}
+  - \usepackage{multirow}
+  - \usepackage{hhline}
+  - \usepackage{calc}
+  - \usepackage{tabularx}
+  - \usepackage[para,online,flushleft]{threeparttable}
+bibliography: "`r paste0(Sys.getenv('HOME'),'/Dropbox/master.bib')`"
+biblio-style: apsr
+anonymous: TRUE
+linkcolor: black
+---
+
+<!-- I think over 140 robustness tests is a personal best or personal worst, depending on how you want to look at it. :P -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      message=FALSE, warning=FALSE,
+                      fig.path='figs/',
+                      cache.path = '_cache/',
+                      fig.process = function(x) {
+                      x2 = sub('-\\d+([.][a-z]+)$', '\\1', x)
+                      if (file.rename(x, x2)) x2 else x
+                      })
+```
+
+
+```{r loadlibaries, include=FALSE}
+# knitr::opts_chunk$set(cache=FALSE, kfigr.prefix=TRUE, kfigr.link=TRUE) 
+# setwd("~/Dropbox/projects/out-group-prejudice-democratic-orientations")
+library(tidyverse)
+library(stevemisc)
+library(stargazer)
+library(dotwhisker)
+library(broom)
+library(flextable)
+library(huxtable)
+library(jtools)
+library(blme)
+library(optimx)
+library(dfoptim)
+library(kableExtra) 
+
+rmdOut <- function() {
+  output <- rmarkdown:::parse_yaml_front_matter(
+    readLines(knitr::current_input())
+    )$output
+  if (is.list(output)){
+    return(names(output)[1])
+  } else {
+    return(output[1])
+  }
+}
+```
+
+```{r loadstuff, include=FALSE, cache=T}
+# Data <- readRDS("../data/data.rds")
+# 
+# Models <- readRDS("../data/models.rds")
+# 
+# Sims <- readRDS("../data/sims.rds")
+
+# setwd("data")
+# Appendix <- list.files(pattern = ".rds") %>%
+#   map(readRDS) %>%
+#   flatten(.)
+# setwd("..")
+
+allrds = list.files(pattern = ".rds", path = "data") %>%
+  stringr::str_remove(., ".rds")
+
+for(i in allrds) {
+      filepath <- file.path(paste0("data/",i,".rds"))
+      assign(i, readRDS(filepath))
+    }
+
+```
+
+\newpage
+\singlespacing
+
+\listoffigures
+
+\listoftables
+
+\newpage 
+
+\singlespacing
+
+# Introduction
+
+This is the supplemental appendix to "Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2017." The supplemental appendix, like the manuscript, is a dynamic document that automates the code and the presentation of the finished results in the document itself [@xie2013ddrk]. This approach to document preparation has multiple benefits, namely in the ability to drive the incidence of transcription error to zero while calling specific results into the document. We will make some references in this document to specific statistics that the raw markup will show is a direct extrapolation from code into presentation. We plan to make the raw markup available upon request during the peer review process and will deposit the final analyses to the corresponding author's Github account upon publication. This will facilitate transparency in published statistical analysis, consistent with the [Data Access and Research Transparency Initiative](http://www.dartstatement.org/) (DA-RT) by the American Political Science Association.
+
+# A Brief Summary of the Results
+
+I will briefly summarize the results of these robustness tests in this section.
+
+Figure A.1 shows the results of regression models that re-estimate the manuscript results, but keeps the dependent variables on their original ordinal scale. In theory, condensing an ordinal item to a categorical/"binary" variable should have no biasing effect on the regression parameters. It instead introduces noise into the parameters by condensing information on an ordinal scale to a binary "there" or "not there" distinction [@berryfeldman1985mrp]. There is a trade off from my vantage point. Logistic regression is easier to estimate and communicate to a wide audience, especially when there are random effects modeled as well. However, the binary dependent variables may mask important variation that could influence some results. Figure A.1 shows the results from hierarchical ordinal logistic regressions are functionally identical to what I report in the manuscript.
+
+Figure A.2 and Figure A.3 re-think how to capture objective indicators of economic anxiety. The manuscript operationalizes these objective indicators as levels that vary across units and not necessarily a phenomenon that is "increasing" or "decreasing" within units themselves. It is why, for example, I model the state unemployment rate as the state unemployment rate at the time of the survey rather than the 12-month difference in the state unemployment rate to the point of the survey. Figure A.2 and Figure A.3 offer a series of different objective economic anxiety indicators that communicate "increasing" economic anxiety and not "higher levels" of economic anxiety, per se. In the ANES analyses (Figure A.2), these are three-month, six-month, and 12-month differences in the county, state, and national unemployment rate to complement the unemployment rate data I report in the manuscript (and show in Figure A.2 for context). In the VSG analyses (Figure A.3), these are three-month, six-month, and 12-month differences in the state unemployment rate as well as 12-month (i.e. year) differences in the ZIP-level percentage of tax forms with unemployment compensation and the value of the unemployment compensation allocated. In all cases, higher values indicate more economic anxiety. The results in Figure A.2 do not differ much from what I report in the manuscript while there is no discernible effect reported for these objective indicators in any of the 10 analyses I report in Figure A.3. Ethnocentrism still emerges as the largest and most precise predictor of anti-immigration opinions.
+
+Figure A.4 and Figure A.5 consider the extent to which ethnocentrism toward Hispanics as out-groups potentially contaminates anti-immigration opinions in the ANES and VSG analyses. I select the ANES analyses here as a focal point for this consideration for two reasons. First, it is the only component of the analyses in the manuscript with a time-series component and, thus, more data and scope. Second, the ethnocentrism I model in the ANES analyses includes attitudes toward Hispanics while the VSG analyses include just responses toward black people and Asians. I mention in the manuscript this follows because of data limitations in the county-level analyses. If Asians are substituted for Hispanics in coding the ethnocentrism measure, the county-level analyses reduce to just an analysis of 1992. Potentially useful insight would be lost.
+
+My estimation strategy then seeks to unpack how much ethnocentrism's effect is augmented by the inclusion of various out-groups. I select what amounts to Model 4 in Table 2 in the manuscript for the analyses I report in Figure A.4, both because of the better data availability with the 2000  ANES survey wave and because the state-level exposure to automation and outsourcing measure had the highest *z*-value of any objective economic anxiety indicator at the state-level. Since no objective economic anxiety indicator had a significant effect in Table 3 and Table 4, I likewise select Model 5 from both the VSG analyses that include the state-level exposure to automation and outsourcing variable for additional context in comparing results. Next, I re-estimate what amounts to Model 4 in Table 2 and Model 5 in Tables 3 and 4 in the manuscript with ethnocentrism measures in which 1) black people are the only out-group, 2) the out-groups are black people and Hispanics (i.e. the manuscript results for the ANES analyses), 3) the out-groups are black people and Asians (i.e. the manuscript results for the VSG analyses), and 4) the out-groups are black people, Asians, and Hispanics (i.e. the full @kinderkam2009uat thermometer measure).
+
+The results show that the inclusion of Hispanics of out-groups does indeed augment the effect of ethnocentrism on wanting to decrease immigration levels in the ANES data (Figure A.4) but not in the VSG data (Figure A.5). However, two other things are worth noting in Figure A.4. First, there is substantial overlap between the measure that includes Hispanics (but not Asians) and the measure that includes Asians (but not Hispanics). This implies that inclusion of these out-groups does augment ethnocentrism's effect but that Asians and Hispanics are no different from each other in the scope of this effect (even if most immigration, and presumably most anti-immigration antipathy) involves white attitudes toward Hispanics. Further, and more importantly, even the baseline group of ethnocentrism toward just black people would be sufficiently larger than any other economic anxiety indicator that I also include in Figure A.4 and Figure A.5. This strongly suggests that ethnocentrism as disposition toward politics and society does better capture immigration opinions than what is suggested by the political economy of immigration framework. This is broadly consistent with what I report in the manuscript.
+
+Finally, I offer Table A.1, Table A.2, and Table A.3 to complement the visual summaries I describe in Figure 1 in the manuscript. There, I note that ethnocentrism does not mediate the effect of these economic indicators much at all. These tables just contain the full results of those models.
+
+\newpage
+
+```{r fig_ordinal, echo=FALSE, tidy = TRUE, size="small", cache=TRUE, results="asis", warning=F, message=F,  fig.width=11, fig.height=8, fig.cap = "\\label{fig:ordinal}A Comparison of the Manuscript Results with Ordinal Logistic Regression Models"}
+fig_ordinal
+```
+
+
+```{r fig_anes_diffs, echo=FALSE, tidy = TRUE, size="small", cache=TRUE, results="asis", warning=F, message=F,  fig.width=14, fig.height=8, fig.cap = "\\label{fig:anesdiffs}The Effect of Various Other Estimations of Objective Economic Anxiety (ANES)"}
+fig_anes_diffs 
+```
+
+
+```{r fig_vsg_diffs, echo=FALSE, tidy = TRUE, size="small", cache=TRUE, results="asis", warning=F, message=F,  fig.width=14, fig.height=8, fig.cap = "\\label{fig:vsgdiffs}The Effect of Various Other Estimations of Objective Economic Anxiety (VSG)"}
+fig_vsg_diffs 
+```
+
+```{r fig_anes_ec, echo=FALSE, tidy = TRUE, size="small", cache=TRUE, results="asis", warning=F, message=F,  fig.width=13, fig.height=8, fig.cap = "\\label{fig:anesec}The Effect of Various Other Estimations of Ethnocentrism (ANES)"}
+fig_anes_ec
+
+```
+
+
+```{r fig_vsg_ec, echo=FALSE, tidy = TRUE, size="small", cache=TRUE, results="asis", warning=F, message=F,  fig.width=14, fig.height=8, fig.cap = "\\label{fig:vsgec}The Effect of Various Other Estimations of Ethnocentrism (VSG)"}
+fig_vsg_ec
+
+```
+
+
+```{r tab_admwo, echo=F, results="asis"}
+
+tab_admwo %>% 
+  set_width(., .99) %>%
+  #add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .1) %>% 
+  set_position(.,"center") -> tab_admwo
+
+if(rmdOut() == 'word_document') {
+  tab_admwo %>%
+  huxtable::as_flextable() %>%
+  autofit()
+} else { # I only knit to Word if I must, and PDF by default. Adjust to your own tastes.
+  tab_admwo  %>%
+    set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  print_latex()
+}
+
+```
+
+
+```{r tab_vdm_hardwo, echo=F, results="asis"}
+
+tab_vdm_harderwo %>% 
+    set_width(., .99) %>%
+  # add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .1) %>% 
+  set_position(.,"center") -> tab_admwo
+
+if(rmdOut() == 'word_document') {
+  tab_vdm_harderwo %>%
+  huxtable::as_flextable() %>%
+  autofit()
+} else { # I only knit to Word if I must, and PDF by default. Adjust to your own tastes.
+  tab_vdm_harderwo  %>%
+    set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  print_latex()
+}
+
+```
+
+
+```{r tab_vdm_drainwo, echo=F, results="asis"}
+
+tab_vdm_drainwo %>% 
+    set_width(., .99) %>%
+  # add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .1) %>% 
+  set_position(.,"center") -> tab_admwo
+
+if(rmdOut() == 'word_document') {
+  tab_vdm_drainwo %>%
+  huxtable::as_flextable() %>%
+  autofit()
+} else { # I only knit to Word if I must, and PDF by default. Adjust to your own tastes.
+  tab_vdm_drainwo  %>%
+    set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  print_latex()
+}
+
+
+```

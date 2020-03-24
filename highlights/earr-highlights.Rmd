@@ -1,0 +1,20 @@
+---
+#title: "Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2016"
+#author: |
+#  | Steven V. Miller, Clemson University, svmille@clemson.edu
+#  | 232 Brackett Hall, Clemson, SC 29634
+abstract: ""
+output: 
+  pdf_document:
+    latex_engine: pdflatex
+    keep_tex: false
+fontfamily: times
+fontsize: 12pt
+
+---
+
+# Highlights
+
+- Subjective and objective indicators about the economy have no robust effect on attitudes about immigration.
+- Ethnocentrism is reliably the largest and most precise predictor of an anti-immigration opinion.
+- Ethnocentrism has larger magnitude effects on attitudes against immigration than all economic indicators combined.

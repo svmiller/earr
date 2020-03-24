@@ -1,0 +1,525 @@
+---
+output: 
+#  word_document:
+#    reference_docx: ~/Dropbox/miscelanea/svm-r-markdown-templates/svm-rmarkdown-word.docx
+  pdf_document:
+    citation_package: natbib
+    keep_tex: FALSE
+    fig_caption: TRUE
+    latex_engine: xelatex
+    dev: cairo_pdf
+    template: ~/Dropbox/miscelanea/svm-r-markdown-templates/svm-latex-ms.tex
+bibliography: "`r paste0(Sys.getenv('HOME'),'/Dropbox/master.bib')`"
+biblio-style: apsr
+geometry: margin=1in
+header-includes:
+  - \linespread{1.05}
+  - \LTcapwidth=.9\textwidth
+  - \usepackage{hyperref}
+  - \usepackage{array}   
+  - \usepackage{caption}
+  - \usepackage{graphicx}
+  - \usepackage{siunitx}
+  - \usepackage[table]{xcolor}
+  - \usepackage{multirow}
+  - \usepackage{hhline}
+  - \usepackage{calc}
+  - \usepackage{tabularx}
+  - \usepackage[para,online,flushleft]{threeparttable}
+title: "Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2017"
+thanks: "This paper is forthcoming at *Social Science Journal.* I thank Ethan Busby, Nicholas T. Davis, Alexandra Filindra, and Matthew Rhodes-Purdy for their comments on previous versions of this manuscript and thank Michael Dewitt for some technical assistance on this document. However, I cannot blame them for any errors that arose in the process. Replication files are available on the author's Github account. **Current version**: `r format(Sys.time(), '%B %d, %Y')`; **Corresponding author**: svmille@clemson.edu."
+author:
+- name: Steven V. Miller
+  affiliation: Clemson University
+  email: svmille@clemson.edu
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+abstract: 'Does "economic anxiety" explain attitudes toward immigration or can we better understand attitudes toward immigration as an outcome of ethnocentrism? This is a long-standing empirical debate in immigration opinion research and a debate that has struggled to distinguish the relative effects. I help settle this debate with a battery of analyses on attitudes toward immigration across the American National Election Studies and Voter Study Group data, spanning analyses on immigration opinion for white Americans from 1992 to 2017 with economic data at levels as granular as the state, county, core-based statistical area (CBSA), and the ZIP code. My analyses are unequivocal that ethnocentrism is reliably the largest and most precise predictor of attitudes toward immigration. Further analyses and simulations from models most consistent with the economic anxiety argument show that a standard deviation increase in ethnocentrism is still a greater or equal magnitude effect than all economic anxiety proxies combined. I close with implications for immigration opinion research.'
+fontfamily: mathpazo
+# fontfamilyoptions: sc, osf
+fontsize: 12pt
+keywords: "economic anxiety, ethnocentrism, immigration attitudes"
+anonymous: FALSE
+endnotes: FALSE
+removetitleabstract: FALSE
+csl: apa.csl
+---
+
+<!-- I further leverage the metadata these data provide by estimating the effects of unemployment and exposure to automation/outsourcing at levels as granular as the state, the county, the ZIP code, and the core-based statistical area.
+
+# Does 'economic anxiety' explain attitudes toward immigration or can we better understand attitudes toward immigration as an outcome of ethnocentrism? This is a long-standing empirical debate in immigration opinion research and the election of Donald Trump has only intensified the salience of this debate. However, any focus on this debate by reference to the 2016 presidential election will struggle to distinguish the relative effects of economic anxiety and ethnocentrism. I help settle this debate with a battery of analyses on attitudes toward immigration across the American National Election Studies and Voter Study Group data, spanning analyses on immigration opinion for white Americans from 1992 to 2016 at levels as granular as the state and the ZIP code. My analyses are unequivocal that ethnocentrism is reliably the largest and most precise predictor of attitudes toward immigration. Further analyses and simulations from cherry-picked models most consistent with the economic anxiety argument show that a standard deviation increase in ethnocentrism is still a greater or equal magnitude effect than all economic anxiety proxies combined. I close with implications for immigration opinion research, given its increased salience after 2016.
+
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      message=FALSE, warning=FALSE,
+                      fig.path='figs/',
+                      cache.path = '_cache/',
+                      fig.process = function(x) {
+                      x2 = sub('-\\d+([.][a-z]+)$', '\\1', x)
+                      if (file.rename(x, x2)) x2 else x
+                      })
+```
+
+```{r loadlibraries, include=FALSE}
+library(tidyverse)
+library(stevemisc)
+library(fst)
+library(mirt)
+library(broom)
+# library(ggridges)
+library(digest)
+library(knitr)
+#library(flextable)
+library(huxtable)
+library(kfigr)
+
+rmdOut <- function() {
+  output <- rmarkdown:::parse_yaml_front_matter(
+    readLines(knitr::current_input())
+    )$output
+  if (is.list(output)){
+    return(names(output)[1])
+  } else {
+    return(output[1])
+  }
+}
+
+
+```
+
+```{r source, include=FALSE}
+# if (file.exists("data/data.rds")) {
+#   Data <- readRDS("data/data.rds")
+# } else {
+#   source("src/1-load.R")
+#   source("src/2-clean.R")
+# }
+# 
+# if (file.exists("data/models.rds")) {
+#   Models <- readRDS("data/models.rds")
+# } else {
+#   source("src/3-analysis.R")
+# }
+# 
+# if (file.exists("data/sims.rds")) {
+#   Sims <- readRDS("data/sims.rds")
+# } else {
+#   source("src/4-sims.R")
+# } 
+
+tabs <- readRDS("data/tabs.rds")
+figs_wwo <- readRDS("data/figs_wwo.rds")
+fig_pooled <- readRDS("data/fig_pooled.rds")
+fig_pes <- readRDS("data/fig_pes.rds")
+```
+
+# Introduction
+
+Immigration opinion research is no stranger to heated debates about what motivates attitudes toward the movement of people across national borders. The most heated debate might be whether there is a political economy of immigration opinions, consistent with economic logic about factors of production and material self-interest, or whether immigration opinion is better understood as a function of cultural dispositions, like ethnocentrism. The nature of this academic debate only increased in salience with Donald Trump's electoral win in 2016. Another heated round of discussions followed about whether the anti-immigration platform that Trump championed, and his voters ostensibly endorsed, is a function of economic anxiety about the nature of a changing economy in a globalized era or whether Trump and his support base are products of an ethnocentric backlash that emerged from Barack Obama's election in 2008. Clearly both can be true, but proponents of both perspectives emphasize the relative importance of economic anxiety or a more cultural disposition like ethnocentrism in explaining Trump's election and, by extension, anti-immigration opinions at the mass-level.
+
+<!-- I can say this part better (below)... -->
+
+Both sides of this argument ultimately talk past each other. This is unsurprising since much of the focus is on the factors that coincided with Donald Trump's election victory in 2016. Endless litigation of Trump's electoral win will no doubt result in evidence consistent with both interpretations regarding attitudes toward immigration, at least as they manifested in a vote for Trump. Antipathies toward non-white groups in the wake of Obama's 2008 election conditioned attitudes toward various aspects of American politics and society, even extending into assessments about the economy [@tesler2016prmr]. Shifting the focus to whether economic anxiety indicators or a cultural disposition of ethnocentrism are "significant" or correlate with anti-immigration attitudes do not bring us closer to a resolution that would ideally accomplish two things: communicate relative effect sizes beyond null hypothesis testing and communicate these effects more broadly, beyond the 2016 presidential election.
+
+This manuscript offers a resolution of this debate. I use American National Election Studies data from 1992 to 2016 and Voter Study Group data from July 2017 to explore the relative effect of economic anxiety and ethnocentrism in explaining antipathies toward immigration and immigrants. My approach here is exhaustive. I use the ubiquitous retrospective and prospective subjective assessments about the economy that appear in every long-running American public opinion data set. However, I also leverage the metadata of both surveys. This leads to additional macro-level economic indicators of unemployment rates and exposure to automation/outsourcing at the national-level as well as more granular levels of the state, the county, the core-based statistical area, and the ZIP code. My findings are unequivocal. Ethnocentrism is by far the largest and most precise predictor of an anti-immigration opinion in any analysis. Economic anxiety indicators are not as reliably statistically significant, nor are the magnitude effects nearly as large. Post-estimation simulation from deliberately cherry-picked models most sympathetic to the economic anxiety argument show that the effect of a standard deviation increase in ethnocentrism on anti-immigration attitudes is equal to every subjective and objective economic anxiety proxy combined and set to the conceivable max. Informally, my results suggest an ounce of ethnocentrism is worth a pound of economic anxiety.
+
+The manuscript proceeds as follows. First, I begin with a review of what we know of attitudes toward immigration. I start with a perspective of how we can understand post-WWII American immigration policy before addressing competing arguments that seek to explain immigration opinions by reference to economic factors or a cultural disposition like ethnocentrism. Thereafter, I proceed with a research design to test hypotheses of the relative effects of ethnocentrism and "economic anxiety." I then offer a battery of regressions to communicate the relative effect of ethnocentrism and "economic anxiety" in explaining immigration attitudes from 1992 to 2017. I close with some implications for how we can better contextualize this debate in the current political climate.
+
+
+# What Do We Know About Attitudes Toward Immigration?
+
+<!--
+
+1. Talk up the benefits of immigration first and connect it to policy and economic logic.
+2. Immigration, like any policy that has its proponents and opponents.
+3. Here's what we know about who supports and opposes immigration on economic terms
+4. Here's what we know about who supports and opposes immigration on cultural terms
+5. This came to a head in the United States with the election of Donald Trump.
+6. It spawned a lengthy discussion is this "economic anxiety?" Here are the puff pieces.
+7. Is it racial/cultural resentment? Here are the pieces.
+8. This makes for a competitive hypothesis test I'll outline in the next section.
+
+https://globalriskinsights.com/2017/09/labor-shortage-united-states-dire-issue/
+--->
+
+<!-- International migration---the movement of people across national borders---is currently a divisive subject, but any discussion of immigration should first anchor it to a summary of why a rich country like the United States tailors its immigration policy the way it does. Refugees, a class of immigrant fleeing their home country to escape war or persecution, have at times been political opportunity for the United States wanting to use resettlement---and even immigration, more broadly---as tools to embarrass and destabilize communist governments during the Cold War [@keely2001irr]. In essence, refugee resettlement and immigration can be useful national security tools for the United States.<!--[^econrefugee] Immigrants all told serve important macroeconomic and fiscal purposes as well. Immigration into the U.S. slows population decline, especially in Middle America [@pew2014cpus], and it should be no surprise that immigration to the U.S. started to increase when the median age of the native-born population started to increase as well [@ortmanetal2014an]. The implication is immigration has been at least a partial stopgap to plug holes in the budget, prominently the Social Security program, as Baby Boomers started to approach retirement age in the 1990s [c.f. @ssmbt2017ar].-->
+
+
+
+<!-- Moreover, immigration may refer to the movement of people across national borders but those people ultimately comprise an economic factor of production with clear implications from Heckscher-Ohlin. The United States excels at capital and its priorities emphasize maximizing that factor of production. The United States, by at least some measures, is deficient in low-skilled labor and uses immigration policy to import that factor of production. The canonical case in the U.S. is farm labor. American workers have routinely expressed an unwillingness for the grueling nature of the labor and the farm industry is reticent to pay American workers a standard wage well above what it pays for migrant workers on a visa. In one case study in North Carolina in 2011, state employment agencies advertised 6,500 farm jobs in the state. Only 265 American workers applied for the position and only seven completed a harvest [@clemens2013ih]. The H-2A visa program allows the farm industry to employ low-skilled migrant labor from Latin America to cheaply cultivate crops for American consumers and for export to foreign customers. -->
+
+<!-- [^econrefugee]: This downplays the economic benefits that this class of immigrant can have in the United States. The Cuban refugee resettlement program played an outsized role in the development of Miami [c.f. @portes1987soce] and available evidence suggests this positive economic effect of refugee resettlement is generalizable to American refugees from other parts of the world [@cortes2004rdei]. -->
+
+The U.S. has tailored immigration policy after World War II to meet various ends. For example, the U.S. restructured immigration policy during the Cold War, in part, to use refugee resettlement and immigration more broadly to destabilize and embarrass communist governments. From this perspective, immigration policy was a national security tool [@keely2001irr, for a review]. More recently, the U.S. government has restructured visa programs to allow more migrants into the country that could meet various economic needs. For example, the H-2A visa program allows the farm industry to employ low-skilled migrant labor from Latin America to cheaply cultivate crops for American consumers and for export to foreign customers. This is a policy solution to a labor crunch because the farming industry cannot recruit nearly enough native labor for production [see: @clemens2013ih]. More generally, absolute increases in migration to the United States started when the median age of the native-born population started to increase as well, especially in Middle America [@pew2014cpus; @ortmanetal2014an]. The implication is immigration has been at least a partial stopgap to plug holes in the budget, prominently the Social Security program, as Baby Boomers started to approach retirement age in the 1990s [c.f. @ssmbt2017ar].
+
+The particulars of contemporary American immigration policy gloss over that immigration is no different from any policy that creates "winners" and "losers." Segments of the general population that stand to "win" from immigration will advocate for increased immigration. Groups that perceive "losses" from immigration will lobby for immigration restrictions and oppose a national policy that increases movement across national borders. @facchinietal2011diga connect this to economic sectors, finding that economic groups that value low labor costs can pressure the government for favorable increases in sector-relevant visas while economic sectors where labor unions are more prominent can decrease immigrant visas that concern their sector.  There are cultural pressures as well. The presence of a larger share of co-ethnics and already foreign-born Americans can lead to pressure on elected representatives for increases in immigration levels [@faccchinisteinhardt2011wdus]. Both economic pressures and cultural pressures can even intersect. For example, @peters2015otcb argues that trade liberalization after World War II led the business community to ease its demand on lawmakers for increased immigration to lower labor costs, which allowed politicians to be more responsive to nativist groups. 
+
+All told, this classification into economic and cultural factors conditions much of what we know about the determinants of immigration policy and the correlates of immigration attitudes [@hainmuellerhopkins2014pati]. More recent discussion emphasizes "anxiety" [e.g. @roberts2015atsd; @west2018eath] about the future of the economy in an era of increased globalization motivates these anti-immigration opinions, but the foundation political economy scholarship in this vein contends individuals are more likely to express anti-immigration opinions or support immigration restrictions if they think immigrants threaten job prospects or other fiscal priorities [c.f. @scheveslaughter2001lmc; @mayda2006wai; @orourkesinnott2006dia; @berg2009wpo; @goldsteinpeters2014net]. Researchers skeptical of the political economy tradition of immigration opinion research find stronger support for cultural and other attitudinal attributes that have no implication for material self-interest. Generally, negative stereotypes of ethnic minorities [@chandlertsai2001sfii], beliefs about the centrality of the English language and Christianity to an American identity [@schildkraut2005poe], perceived cultural threat by the Spanish language [@newmanetal2012fle],  and resentment toward immigrants' perceived inability to assimilate or "fit in" [@schildkraut2011atc], among other related cultural concerns, better explain attitudes toward immigration than economic indicators. I discuss these in turn.
+
+
+## "Economic Anxiety" and Attitudes Toward Immigration
+
+"Economic anxiety" arguments may invest more into the "economic" component of "economic anxiety" than they invest to the "anxiety" component. This means identifying a factor of production (e.g. low-skilled labor), or activity associated with it (e.g. unemployment), and outlining the intuition to how this may manifest in anti-immigration attitudes. The "anxiety" component is often implied or supposed to manifest in the behavior it purports to explain (here: an anti-immigration attitude). The casual use of "anxiety" could also be construed as an "emotion", even as use of the term "economic anxiety" pivots far from emotions and more toward rational assessments about the economy. All told, the measures of what are in orbit of "economic anxiety" are almost always the same. These are subjective retrospective/prospective assessments of the economy, the respondent's own economic condition at the moment, and the objective features of the broader economy in which present or past poor performance creates pessimism about future performance. Thus, I define "economic anxiety" broadly, capturing subjective and objective assessments of how poorly an individual, or the individual's community, performed in the production of goods and services in the immediate past and how pessimistic the respondent is (or could be) for future performance given past trends and present indicators. This definition is deliberately broad and all-encompassing, but offers at least a definition of the concept for operationalization in the research design section.
+
+The "economic anxiety" argument offers two pathways from economic indicators and economic assessments to attitudes toward immigration [@hainmuellerhopkins2014pati]. The first, the "labor market competition" argument, focuses on immigration's hypothesized effect on real wages. The second, the "fiscal burden" argument, looks at immigration's purported effect on public finance and tax policy. I elaborate these below.
+
+The labor market competition argument builds in several assumptions, best articulated by @scheveslaughter2001lmc. First, current factor income is the income received from a factor of production (i.e. land, labor, capital) and is a major determinant of an individual's material well-being. Second, and reasonably in the American context, individuals think that immigrants increase the relative supply of low-skilled labor in the United States. Assuming further from a Heckscher-Ohlin model that there is one national labor market for each factor of production and that sufficient mobility of natives and immigrants does not segment local labor markets, a large influx of immigrants decreases wages for native low-skilled labor and increases wages for high-skilled labor. This economic intuition informs hypotheses that look for a simple correlation between skill and anti-immigration attitudes. Low-skilled labor constitutes a segment of the native population particularly vulnerable to wage decreases following a large influx of immigrants. They thus prefer to restrict immigration inflows for fear of how immigrants increase competition for employment and higher wages. This can be generalized to macroeconomic contextual influences, like higher unemployment rates, in which more people are actively looking for employment and immigrants will only increase the competition for scarce resources while also depressing wages. The path from "economic anxiety" to anti-immigrant attitudes is channeled through a fear of labor market competition and reflects material self-interest.
+
+The second pathway from "economic anxiety" to anti-immigration attitudes is through the purported "fiscal burden" that immigrants pose [@hansonetal2007pfip]. This approach borrows several assumptions from the labor market competition argument, namely that current factor income is a major determinant of material well-being and that natives think immigrants increase the relative supply of low-skilled labor. From there, this theoretical model explores what happens to net fiscal transfers that natives receive. Assuming that immigrants <!-- https://cis.org/Report/Welfare-Use-Immigrant-and-Native-Households --> use means-tested welfare programs more than natives, their use raises the demand for social assistance and the costs associated with these programs. States, in the @hansonetal2007pfip example, can offset these costs by raising taxes, reducing other transfers, or borrowing. However, Vermont is the only state in the country without at least a constitutional citation or statutory requirement on balanced budgets, which reduces the options to some form of increased taxation and reduced transfers from other programs. This should be unpopular with higher-skilled and higher-income natives who are more likely to bear this burden through progressive tax-and-transfer policies. This argument is interested in individual-level preferences by skill and income endowment but it too is generalizable to macroeconomic contextual influences that should create more pessimism about the ability to accommodate immigrant demands for social assistance. The path from economic anxiety to anti-immigrant attitudes is channeled through a fear of the "fiscal burden" that immigrants pose. This leads to preferences for restricting immigration inflows and increasing the likelihood that natives view immigrants as a "burden" or "drain" on society.
+
+This leads to two hypotheses to test in the next two sections.
+
+<!-- Conditions of "economic anxiety", whether manifested in subjective economic assessments, material individual-level conditions, or contextual macroeconomic indicators, are more likely to lead to an individual-level attitude favoring restrictions in immigration inflows. -->
+\begin{hypothesis}
+\begin{minipage}[t]{5.1 in}
+Higher levels of "economic anxiety", broadly defined, are more likely to lead to an individual-level attitude favoring restrictions in immigration inflows.
+\end{minipage}
+\end{hypothesis}
+
+```{r word_h1, echo=F, results="asis"}
+if(rmdOut() == 'word_document') {
+  cat('> **H1**: Higher levels of "economic anxiety", broadly defined, are more likely to lead to an individual-level attitude favoring restrictions in immigration inflows.') } else { cat('') }
+```
+
+<!-- Conditions of "economic anxiety", whether manifested in subjective economic assessments, material individual-level conditions, or contextual macroeconomic indicators, are more likely to lead to an individual-level attitude viewing immigrants as a "burden" or "drain." -->
+\begin{hypothesis}
+\begin{minipage}[t]{5.1 in}
+Higher levels of "economic anxiety", broadly defined, are more likely to lead to  an individual-level attitude viewing immigrants as a "burden" or "drain."
+\end{minipage}
+\end{hypothesis}
+
+```{r word_h2, echo=F, results="asis"}
+if(rmdOut() == 'word_document') {
+  cat('> **H2**: Higher levels of "economic anxiety", broadly defined, are more likely to lead to  an individual-level attitude viewing immigrants as a "burden" or "drain."') } else { cat('') }
+```
+
+## A Cultural Hypothesis of Ethnocentrism
+<!--
+
+1. Define ethnocentrism.
+    - a: a mental habit, to divide humans to in-groups and out-groups
+    - b: It's variable, rather than a type
+    - c: a general predisposition.
+2. The general predisposition thing emphasizes that activation is important.
+3. Add in a bunch of cites/quotes to emphasize this, everything from Huntington to the minority-majority stuff.
+4. Conjecture toward hypothesis.
+
+-->
+
+A different paradigm for explaining anti-immigration opinion places more emphasis on "cultural" factors that are separate from concerns of material self-interest. "Culture" here is used broadly but refers to a set of beliefs that provides underlying assumptions that govern behavior of a political system. It becomes a framework by which individuals form opinions on who belongs in a polity and what their role is in the polity. The applications here are multiple in the context of both immigration opinions and American political behavior. Racial resentment [e.g. @mcconahayhough1976sr; @kindersanders1996dc] emerged as more white Americans felt black people violated core "values" by making "illegitimate demands" for revisions to the Jim Crow-era racial status quo. This has clear implications for immigration opinions as immigration patterns changed during the Cold War. Nativism, a disposition that sees immigrants as threats to values and group status, has been a recurring problem in the American context [c.f. @higham2002sl; @perea19997io]. One particularly promising application in this paradigm is ethnocentrism, which @kinderkam2009uat note is a more general disposition toward the world than a group-specific resentment.
+
+The argument linking ethnocentrism with attitudes against immigration starts with Kinder and Kam's [-@kinderkam2009uat] definition of the concept. @kinderkam2009uat define "ethnocentrism" as a two-fold phenomenon, first building in two groundwork assumptions that ethnocentrism is normal/rational rather than deviant or irrational and that ethnocentrism is less a "type" and more of a "quantity" in which individuals can vary incrementally. The two folds of the conceptual definition of ethnocentrism are, first, that ethnocentrism is a mental habit and tendency to divide the world into not only "in-groups" and "out-groups" but in-groups *versus* out-groups. This implies the bifurcation of in-groups and out-groups is not neutral. Individuals assign virtuous assessments to members of the in-group and evaluate the out-group and its members as untrustworthy and dangerous. Second, ethnocentrism is a general disposition, or frame of mind, toward the world. This would describe ethnocentrism in terms similar to how modern authoritarianism scholarship  [e.g. @stenner2005tad] sees "authoritarianism" as a disposition that must be activated by some frame (i.e. perceived threat). *Behavioral* manifestations (e.g. prejudice) may follow from this disposition, and more specific attitudes like nativism may flow from it [@kinderkam2009uat, 208], but they are not part of the disposition itself.
+
+The disposition assumption is an important part of the conceptual definition. Without it, the concept is inseparable from behavior it may explain (e.g. nativism and anti-immigration opinions) and it runs into some of the oversimplification criticisms that plagued early scholarship on the authoritarian personality. Thus, there are important steps between the ethnocentrism disposition and its manifestation in a political attitude or behavior. First, ethnocentrism emerges as a heuristic and boundedly rational individuals rely on it to make sense of a complex social/political world. Second, boundedly rational individuals, who may otherwise be less interested in social/political affairs amid other family/work commitments, need salient political issues to emerge that command their attention. Third, political elites should frame the issue that appeals to the ethnocentrism disposition, which would involve framing a salient issue as a conflict among groups. Importantly, the consequences of ethnocentrism depend on the salience of the issue and how elites communicate an issue to command public attention.
+
+The case of immigration, especially in the past 30 years, conforms well to what this framework predicts. Immigration policy changes, largely stemming from the Immigration and Naturalization Act of 1965, substantially increased immigration and changed the countries of origin of these immigrants. Immigration from Western Europe decreased as the region completed its post-World War II recovery while immigrants from Latin America and Asia increased. This new influx of immigrants, sometimes welcomed by U.S. lawmakers for aforementioned Cold War propaganda purposes [@keely2001irr], created an important backlash. Multiple frames followed that highlighted how these new immigrants did not look like the typical American, did not speak the same language, and that these differences were potentially threatening. In June 1984, President Ronald Reagan complained the U.S. had "lost control of its borders" after 1983 saw the largest absolute increase in immigrants and refugees to that point in U.S. history, warning "no nation can do that and survive." Still others conjured even more menacing frames that increased immigration threatened an "ethnic revolution" [@brimelow1995an] and a "dilution" [@herrnsteinmurray1994bc] of the national gene pool that jeopardized America's (white) "national identity." By the mid-1990s, political elites in opposition to Bill Clinton picked up these frames and media outlets like the *New York Times* amplified them [@kinderkam2009uat, 144-7], driving up immigration as a policy sufficient to command public attention. More recent frames and disposition activation---whether from political elites like Donald Trump or media reports about the U.S. becoming a "minority-majority" country [c.f. @wazwaz2015io] in the near future---are simple continuations of the past 30 years of immigration messaging.
+
+The pathway from ethnocentrism to explicit anti-immigration attitudes is rather straightforward. Ethnocentrism is already a disposition toward the world in which in-groups are virtuous while out-groups are dangerous and untrustworthy. It is silent on immigration as policy and the political attitudes that form around it. However, the changing patterns of migration into the United States during the Cold War created policy issues sufficiently salient to command public attention and around which opportunistic elites could frame public opinion. The disposition would lead to members of the in-group (i.e. a white American) to view members of the out-group (i.e. an immigrant) as untrustworthy and dangerous. They are less likely to favor increasing the presence of these untrustworthy and dangerous out-groups. They are also more likely to view members of these out-groups as drains on society. These two hypotheses are formally written as follows.
+
+\begin{hypothesis}
+\begin{minipage}[t]{5.1 in}
+Individuals with higher levels of ethnocentrism are more likely to favor restrictions of immigration inflows.
+\end{minipage}
+\end{hypothesis}
+
+```{r word_h3, echo=F, results="asis"}
+if(rmdOut() == 'word_document') {
+  cat('> **H3**:  Individuals with higher levels of ethnocentrism are more likely to favor restrictions of immigration inflows.') } else { cat('') }
+```
+
+\begin{hypothesis}
+\begin{minipage}[t]{5.1 in}
+Individuals with higher levels of ethnocentrism are more likely to view immigrants as a "burden" or "drain."
+\end{minipage}
+\end{hypothesis}
+
+```{r word_h4, echo=F, results="asis"}
+if(rmdOut() == 'word_document') {
+  cat('> **H4**: Individuals with higher levels of ethnocentrism are more likely to view immigrants as a "burden" or "drain."') } else { cat('') }
+```
+
+
+The next section outlines an empirical test of these hypotheses.
+
+
+# Research Design
+
+I propose an empirical analysis of white American attitudes toward immigration from two prominent public opinion data sets in the United States. The first is the American National Election Studies (ANES) data, which has been reliably asking its respondents questions about acceptable immigration levels in the United States since 1992. The second data set is the July 2017 wave of the Voter Study Group (VSG) data. The VSG data set is a new addition to the catalog of long-running American public opinion data sets. Drawn from an original sample of the 2012 Cooperative Campaign Analysis Project (CCAP), the data represent a panel of respondents who have been interviewed five separate times between December 2011 and January 2019. I choose the July 2017 wave of the VSG data to include in this analysis because of the unique nature of the immigration questions contained in the survey relative to other waves.  I select on respondents who self-identify as white, given the unique role this group has played in reacting to both immigration changes that started in the mid-1960s as well as the elections of Barack Obama in 2008 and Donald Trump in 2016.  
+
+## Dependent Variables
+
+The ANES has an item on immigration that has regularly appeared in all its surveys since 1992. The prompt asks, "do you think the number of immigrants from foreign countries who are permitted to come to the United States to live should be increased a lot, increased a little, [be the] same as now, decreased a little, or decreased a lot?" I recode this variable to be a 1 if the respondent thinks the number of immigrants should be decreased or decreased a lot. I code all other responses as zero.
+
+<!-- [^norr96]: The ANES did not ask the racial resentment questions in the 1996 survey wave even as it asked this question about immigration levels. -->
+
+The VSG data ask two questions on immigration. The first I use is similar to the ANES item. The survey prompt asks, "do you think it should be easier or harder for foreigners to immigrate to the US legally than it is currently?" The respondent can answer with "much easier", "slightly easier", "no change", "slightly harder", or "much harder." I condense the ordinal nature of the data into a binary variable if the respondent thinks immigration should be slightly harder or much harder than it is currently. The second question is a much more aggressive prompt. The question asks, "overall, do you think immigrants legally residing in the U.S. make a contribution to American society or are a drain?" Notice the "legally" qualifier induces the respondent to think of those who migrated to the U.S. with proper documentation and are still residing in the U.S. with proper paperwork, discouraging the respondent to conjure undocumented workers as they answer the question.[^othervsgwaves] The respondent can choose a response of "mostly make a contribution", "neither", or "mostly a drain." I code a 1 is the respondent thinks legal immigrants are mostly a drain on American society. I code all other responses as zero.
+
+These binary dependent variables allow for greater ease in the interpretation of logistic regression coefficients and the quantities of interest provided from logistic regression models. The appendix contains analyses of all three dependent variables on their original ordinal scale. The results in the appendix are functionally identical to the results in the manuscript across all estimations.
+
+[^othervsgwaves]: The "legally" qualifier is a unique word choice in the July 2017 wave. Other prompts in other waves substitute "illegally" for "legally", making these other waves less suitable for evaluating the labor market competition hypothesis.
+
+## Proxies for "Economic Anxiety"
+
+I use multiple indicators to measure "economic anxiety" that code both individual-level survey responses about the economy and incorporate macro-level economic indicators. The ANES and VSG analyses to follow will not be identical across all indicators but the indicators I select are largely similar. `r figr("tab_vars", TRUE, type="Table")` will provide a summary of all these indicators and the components of economic anxiety to which they apply.
+
+I start with a prompt measuring labor market competition that is identical across the ANES and VSG data. This is a dummy variable that codes a 1 if the respondent is currently unemployed, but seeking work (i.e. the respondent is also not a full-time student or, for example, a stay-at-home parent). Opponents of increasing immigration into the country supposedly couch their opposition to a hypothesized displacement effect that foreign workers have on native workers. Those who are themselves unemployed, but seeking work, should be more supportive of immigration restrictions as a result of their own uncertain work prospects. 
+
+Further, I include a dummy variable for whether the respondent self-identifies in one of the lowest income brackets available in the survey data. The ANES and VSG ask income questions differently. The time-series focus of the ANES leads to the survey data condensing income into percentiles of 0-16th percentile, 17th-33rd percentile, 34th-67th percentile, 68th-95th percentile, and 96th-100th percentile. The VSG, meanwhile, asks more granular questions of income based on self-placement into 31 different income brackets. To ensure a comparability across both different data sets, I create a low-income measure from the VSG data that coincides with the data limitations of the ANES. In both data sets, the low-income variable is a dummy variable that is a 1 for respondents who are in the 0-16th percentile of responses (and 0 if otherwise).
+
+\footnotesize 
+
+```{r tab_vars, echo=F, eval=T}
+# library(kableExtra)
+
+tribble(~`**Component**`, ~`**Measurement**`,
+        "*Labor Market Competition*", "Is respondent unemployed, but seeking work? (ANES, VSG)",
+        "", "Does respondent place themselves in lower income brackets? (ANES, VSG)",
+        "*Retrospective Evaluation*", "Did the economy get worse over the past 12 months? (ANES)",
+        "","Did personal finances get worse over past year? (VSG)",
+        "*Prospective Evaluation*", "Will economy get worse in next 12 months? (ANES)",
+        "","Is the economy getting worse? (VSG)",
+        "*Objective Indicators*", "County-level Unemployment Rate (ANES, 1992-1996)",
+        "", "State-level Unemployment Rate (ANES, VSG)",
+        "", "National-level Unemployment Rate (ANES)",
+        "", "CBSA-level Exposure to Automation/Outsourcing (VSG)",
+        "", "State-level Exposure to Automation/Outsourcing (ANES, VSG)",
+        "", "% of Tax Returns in ZIP with Unemployment Compensation (VSG)",
+        "", "ZIP-level Average Unemployment Compensation (VSG)") %>%
+  kable(., caption="A Summary of the Economic Anxiety Proxies Used in the Analysis")
+
+```
+
+\normalsize
+
+There are two types of survey questions in the U.S. that approximate economic anxiety by reference to evaluations of the economy. These evaluations are both retrospective and prospective, asking the respondent if they believe the economy got worse over the past 12 months and if the economy will get worse in the near future. Both ANES and VSG have questions that gauge these retrospective and prospective evaluations of the economy, but both are worded differently. In the ANES analyses, I create two dummies for if the respondent believes the economy got worse over the past 12 months and if the respondent believes the economy will get worse over the next 12 months. The VSG analyses include dummy variables for respondents who believe their personal finances got worse over the past year and if the respondent believes the economy is getting worse.
+
+I give the most attention to the objective, contextual indicators of "economic anxiety" because these should, in theory, be immune to potential spillover effects we observe after Obama's election [c.f. @tesler2016prmr]. If these arguments are correct, they should also be exogenous to attitudes about immigration. They provide an important means to test some of the core arguments about "economic anxiety" as they emerged in 2016.
+
+The most common objective indicators available to use are unemployment statistics from the Bureau of Labor Statistics (BLS). I consult BLS data for unemployment rate statistics at the county-level, state-level, and national-level and create variables for the unemployment rate at the time of the survey.[^timeofsurvey] Higher values communicate more economic uncertainty.[^unemavailable]
+
+[^timeofsurvey]: I leverage the temporal metadata available in all analyses. ANES stopped recording the month of the interview after 2008, so I benchmark the economic anxiety indicators for later ANES waves to November of the survey year. ANES post-election interviews usually transpire from November to January after the election.
+
+[^unemavailable]: ANES has county-level metadata available for only the first three waves (1992, 1994, 1996) I use in my analyses. State-level unemployment variables will appear in all models but the national-level unemployment statistics will not appear in the VSG analyses since the VSG analyses are cross-sectional.
+
+
+Further, I include a more prospective nature of economic anxiety that looks at the vulnerability of a state's economy to automation/outsourcing. This is of interest to the "job polarization" literature, which highlights how skills that can easily be routinized are at risk for replacement by robots or outsourcing to countries with cheaper labor. I gather yearly state-level Occupational Employment Statistics (OES) data on employment size by sector and code an occupation category as routine, whether "cognitive" or "manual", if the occupation is "sales and related", "office and administrative support", "production", "transportation and material-moving", "construction and extraction", "installation, maintenance, and repair" or "farming, fishing, and forestry" [c.f. @jaimovichsiu2014tc].[^farming] I create a variable of the percentage of employment in the state in occupations that are easily "routinized", a measure of exposure of the state's economy to automation and outsourcing. The nature of the VSG data, which have the respondent's reported ZIP code, allows me to use U.S. Census information to connect the respondent's ZIP code to the respondent's core-based statistical area (CBSA). The OES data have employment sector information at the CBSA-level, which creates a corollary variable for the VSG analyses.
+
+[^farming]: The last category---"farming, fishing, and forestry"---is not typically included in analyses on job polarization, but @kolko2016twsw argues to include the farming sector in considerations of exposure to automation/outsourcing because of BLS forecasts of employment declines in this sector over the next decade [@bls2017ep]. I choose to do this as well because this variable played a large role in his argument that Trump's vote share correlated with this measure.
+
+Regrettably, unemployment statistics are not as comprehensive at the ZIP-level as they are at other geographic levels. <!--The American Community Survey has some ZIP-code level information about unemployment, but these are reduced to five-year estimates that are not that helpful for evaluating an "economic anxiety" argument at the ZIP-level.  Further, ZIP codes routinely span multiple counties and, in some cases, states (e.g. 97635 includes both California and Oregon). --> I compensate for this in two ways. First, I leverage tax-return information from the Internal Revenue Service (IRS), which does have specific ZIP-level statistics. The VSG survey wave that I use was in July 2017, roughly three months after the filing deadline for 2016. The IRS records the percent of tax returns that had unemployment compensation and the average value of unemployment compensation in the ZIP code. I create two variables from this information: the percentage of tax returns in the ZIP code with unemployment compensation and the average value of unemployment compensation. Higher values indicate more "economic anxiety."
+
+This will create four objective indicators in the ANES analyses and five objective indicators to be used in both VSG analyses.[^increasingvslevels]
+
+[^increasingvslevels]: The appendix contains results of the main analyses in this manuscript that rethink these "economic anxiety" indicators in a variety of ways, like 3-month, 6-month, and 12-month differences in unemployment rates as well as 12-month differences in the tax return data. This approaches "economic anxiety" less as a "level" and more of a phenomenon that is measured as it potentially "increases." The results of those estimations are broadly in line with the results I provide in the manuscript. 
+
+
+## Ethnocentrism
+
+I develop a measure of ethnocentrism based on Kinder and Kam's [-@kinderkam2009uat] analysis in their book. Their approach deployed two estimation strategies for measuring ethnocentrism. The first is an interval measure of stereotypes of a (white, black, Hispanic, or Asian) respondent's in-group (as hard-working, intelligent, and trustworthy) relative to stereotypes of a respondent's out-group on the same continua. The second is a group thermometer rating of the respondent's in-group minus the mean thermometer rating of the respondent's ethnic/racial out-groups. Higher values also indicate more ethnocentrism.
+
+
+
+I choose the second measure as the primary measure of ethnocentrism in this analysis. My rationale here is multiple. First, my goal is to maximize available waves in the ANES data. Several of the "stereotype" items are unavailable in various ANES waves. For example, ANES asked about "peacefulness" of these groups instead of their trustworthiness in the 1992 and 1994 waves. It stopped asking about trustworthiness in the 2008 wave and dropped the intelligence item in 2016. Further, these questions do not appear in the VSG data even as the VSG data set has identical group thermometer prompts. Using the group thermometer approach to measuring ethnocentrism not only maximizes ANES waves, but allows for comparability with the VSG analyses as well (which only has the thermometer prompts).[^thermhisp98] Data limitations in the earlier waves lead to ANES analyses where the out-groups are black people and Hispanics while the VSG analyses include responses toward black people and Asians. The appendix contains multiple reformulations of the ethnocentrism concept that isolate potential biasing effects of attitudes about Hispanics or Asians contained in these prompts, ultimately finding that the effect of bias is negligible across the ANES and VSG analyses and should not meaningfully influence the results reported in this manuscript.
+
+[^thermhisp98]: The ANES did not include a thermometer rating item for Hispanics as a group in 1998, which would exclude the 1998 wave from this analysis.
+
+## Control Variables
+
+I also include several control variables, most of which are identical across the ANES and VSG sampling frame. I include the respondent's age in years, whether the respondent self-identifies as a woman, and if the respondent graduated from college with a four-year degree. I include the ubiquitous party identification variable in which the respondent places her/his partisanship on a seven-point scale from "strong Democrat" to "strong Republican." The ideology variable will differ from the ANES data to the VSG data. The ANES data has a liberalism-conservatism index that the ANES combines from thermometer ratings for liberals and conservatives with higher values indicating a more conservative respondent. The VSG has a five-item ideology score from the political left to right with higher values indicating a respondent who self-identifies as more conservative.
+
+## Model Notes
+
+The analyses select on self-identified white respondents in the ANES and VSG data and takes additional care to model the spatial and temporal heterogeneity in the data. Thus, following advice from @schmidtcatranfairbrother2015remm, I model the spatial and temporal heterogeneity in the ANES data with random effects for the state, the state-year (e.g. New York-2000, California-2004), and the survey year. The county-level analyses I conduct from 1992 to 1998 include random effects for the county in lieu of the state. The VSG analyses include random effects for the state.
+
+Further, the analyses I propose here are also concerned with magnitude effects and effect sizes. These can be communicated with post-estimation simulation but regression analyses can also give a preliminary glimpse of relative effect sizes by scaling all non-binary independent variables by two standard deviations. This puts binary independent variables and non-binary independent variables on roughly the same scale. @gelman2008sri argues this has the benefit of comparing effect sizes across regression coefficients in addition to being good practice in the mixed effects modeling framework.
+
+# Results
+
+I am estimating and reporting over a dozen regressions that pit "economic anxiety" arguments against an argument that proposes a cultural disposition like ethnocentrism is a more robust and stronger predictor of attitudes toward immigration than any indicator about the economy. This creates concerns of how to communicate the results in as clear and plain way as possible. My approach in this section will lean on prioritizing the fundamental takeaways from these analyses in subsections.
+
+## Economic Anxiety Does Not Have Consistent Effects on Anti-Immigrant Attitudes
+
+The major takeaway from these results is economic anxiety indicators do not have effects the reader could reliably discern from zero effect across all estimations. By contrast, ethnocentrism does have effects that the reader can comfortably discern from zero effect in every analysis.
+
+`r figr("tab_adm", TRUE, type="Table")` explores the correlates of an individual favoring decreases in the number of immigrants in the ANES data. The primary concern in this analysis is the relative strength of the ethnocentrism hypothesis against the effect of the economic proxies. The results summarized in `r figr("tab_adm", TRUE, type="Table")` provide some evidence consistent with the economic anxiety arguments but it is clear from `r figr("tab_adm", TRUE, type="Table")` that the effect of ethnocentrism is much larger and more precise than these economic anxiety proxies. White Americans who thought the economy got worse over the last year were more likely to support decreasing immigration levels in the U.S. across all models, as were those who held gloomy prospective assessments about the economy getting worse in the next 12 months. However, there is no difference between the unemployed and the gainfully employed (or those not looking for work) in attitudes favoring a decrease in immigration levels. The effect of being in the lowest-income categories is not positive and significant across all estimations. Indeed, the effect is *negative* and statistically significant in the temporally-limited county-level analyses. The objective indicators are not consistently positive or discernible from zero across all estimations. There is a positive effect of the county employment rate in Model 1 and the effect of the state-level exposure to automation and outsourcing variable in Model 4 would be statistically significant at a lower threshold of .1, but the state and national unemployment rate coefficients are indiscernible from a null hypothesis of zero relationship in Models 2 and 3. The effect of the national unemployment rate is even negative.
+
+```{r tab_adm, echo=F, results="asis"}
+
+tabs$tab_adm %>%
+  set_width(., .99) %>%
+  add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table. See also Table 1.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .1) %>% 
+  set_position(.,"center") -> tabs$tab_adm
+
+if(rmdOut() == 'word_document') {
+  tabs$tab_adm %>%
+  huxtable::as_flextable() %>%
+  autofit()
+} else { # I only knit to Word if I must, and PDF by default. Adjust to your own tastes.
+  tabs$tab_adm  %>%
+  print_latex()
+}
+
+
+```
+
+
+The VSG analyses communicate a similar story. `r figr("tab_vdm_harder", TRUE, type="Table")` complements the focus in `r figr("tab_adm", TRUE, type="Table")` with a prompt asking respondents to communicate if they want to make it harder for potential immigrants to move to the United States.  The economic anxiety variables here are almost all statistically insignificant, barring the lone exception of the retrospective evaluation variable of whether the respondent's personal finances got worse over the previous year. That coefficient is positive and discernible from zero across all five estimations. However, every other economic variable is indiscernible from zero and three of the five objective indicators even return negative coefficients. Ethnocentrism emerges as having the largest and most precise effect on a white respondent's attitude toward making it harder to immigrate to the United States.
+
+```{r tab_vdm_harder, echo=F, results="asis"}
+if(rmdOut() == 'word_document') {
+tabs$tab_vdm_harder %>% 
+  set_width(., .99) %>%
+  add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table. See also Table 1.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .01) %>% 
+  set_position(.,"center") %>%
+  huxtable::as_flextable() %>%
+  autofit() 
+  } else {
+  tabs$tab_vdm_harder %>% 
+  set_width(., .99) %>%
+  add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table. See also Table 1.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .01) %>% 
+  set_position(.,"center") %>%
+      print_latex()
+}
+```
+
+
+`r figr("tab_vdm_drain", TRUE, type="Table")`  explores the correlates of interest to the "fiscal burden" component of attitudes about immigration. Here, the results are even more supportive of the ethnocentrism argument and less supportive of the "economic anxiety" argument. The magnitude of the ethnocentrism coefficient is discernibly larger than every other coefficient in the model and the corollary *z*-statistic is larger than every other similar statistic as well. Meanwhile, none of the economic anxiety variables are statistically significant. The low-income variable, which codes whether a respondent self-placed their income into what amounts to the bottom-to-16th percentile of all available responses, is the only set of coefficients not dwarfed by the standard errors. There is no support from `r figr("tab_vdm_drain", TRUE, type="Table")`  for the contention that respondents channel their "economic anxiety" through the purported "fiscal burden" on social transfers that immigrants pose. Ethnocentrism emerges as a much more powerful predictor of these attitudes.
+
+```{r tab_vdm_drain, echo=F, results="asis"}
+if(rmdOut() == 'word_document') {
+tabs$tab_vdm_drain %>% 
+  set_width(., .99) %>%
+  add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table. See also Table 1.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .01) %>% 
+  set_position(.,"center") %>%
+  huxtable::as_flextable() %>%
+  autofit() } else {
+   tabs$tab_vdm_drain %>% 
+  set_width(., .99) %>%
+  add_footnote(., "Note: Objective economic anxiety indicators noted in column names in this table. See also Table 1.", border=0) %>%
+   set_font_size(., 1:nrow(.), 1:ncol(.), 9) %>%
+  set_italic(nrow(.), 1, TRUE) %>%
+  set_col_width(., 1, .01) %>% 
+  set_position(.,"center") %>%
+      print_latex()
+  }
+```
+
+`r figr("figs_wwo", TRUE, type="Figure")`  shows what the effect of the economic anxiety indicators look like when estimated with and without ethnocentrism. I do this to consider the weight of an argument that economic factors are important correlates of anti-immigration attitudes, but they would not be visible when ethnocentrism is simultaneously modeled. Thus, `r figr("figs_wwo", TRUE, type="Figure")` compares the regression coefficients for the "economic anxiety" indicators from  Tables  `r figr("tab_adm", FALSE, type="Table")`,  `r figr("tab_vdm_harder", FALSE, type="Table")`, and  `r figr("tab_vdm_drain", FALSE, type="Table")` (in which ethnocentrism is included in the estimation) to analyses in which ethnocentrism is excluded from the model. `r figr("figs_wwo", TRUE, type="Figure")` has three panels, intuitively titled for the particular dependent variable estimated. The five facets coincide with the five types of economic anxiety variables from  Tables  `r figr("tab_adm", FALSE, type="Table")`,  `r figr("tab_vdm_harder", FALSE, type="Table")`, and  `r figr("tab_vdm_drain", FALSE, type="Table")`. Each facet is annotated on the *y*-axis for the particular objective economic anxiety indicator in the model (i.e. the column names from Tables  `r figr("tab_adm", FALSE, type="Table")`,  `r figr("tab_vdm_harder", FALSE, type="Table")`, and  `r figr("tab_vdm_drain", FALSE, type="Table")`). The dot-and-whisker shows the effect of the particular economic anxiety variable (with confidence intervals) when ethnocentrism is also included (i.e. the results I report in Tables  `r figr("tab_adm", FALSE, type="Table")`,  `r figr("tab_vdm_harder", FALSE, type="Table")`, and  `r figr("tab_vdm_drain", FALSE, type="Table")`). The triangle-and-whisker shows the effect of the particular economic anxiety variable (with confidence intervals) when ethnocentrism is excluded from the model. If there are measurable differences from what is summarized in Figure \ref{fig:wwo} against what is reported in Tables `r figr("tab_adm", FALSE, type="Table")`,  `r figr("tab_vdm_harder", FALSE, type="Table")`, and  `r figr("tab_vdm_drain", FALSE, type="Table")`, this would suggest ethnocentrism's presence in the model mediates the effect of these economic indicators.[^wwomodels]
+
+[^wwomodels]: The appendix contains the full results from these models estimated without ethnocentrism.
+
+```{r figs_wwo, echo=FALSE, tidy = TRUE, size="small", cache=TRUE, results="asis", warning=F, message=F, fig.height=17, fig.width=9, fig.cap = "\\label{fig:wwo}The Effect of Economic Anxiety Indicators, With and Without Ethnocentrism"}
+
+multiplot(figs_wwo$fig_anes_wwo + labs(y = "", title = "ANES (Decrease Immigration Levels)") +  theme(legend.position = "none"), 
+          figs_wwo$fig_vsg_wwo_harder + labs(y = "", title = "VSG (Make Immigration Harder)") +  theme(legend.position = "none"),
+          figs_wwo$fig_vsg_wwo_drain + labs(y = "", title = "VSG (Immigrants are a Drain)")) 
+
+```
+
+`r figr("figs_wwo", TRUE, type="Figure")` suggests there are few differences in these economic indicators contingent on whether ethnocentrism is included or excluded from the estimation. The effect of negative prospective evaluations about the economy on thinking immigrants are a drain (in Table `r figr("tab_vdm_drain", type="Table")`) are drawn to zero when ethnocentrism is simultaneously estimated (see: top-middle facet for the VSG (Immigrants are a Drain) analyses near the bottom of `r figr("figs_wwo", TRUE, type="Figure")`). However, the exclusion of ethnocentrism is insufficient to make a statistically significant effect of negative prospective evaluations on thinking immigrants are a drain and the confidence intervals overlap substantially in that facet. There is some movement in the effect of the low-income variable in the temporally-limited, county-level ANES analyses (bottom of the top-middle facet, near the top of `r figr("figs_wwo", TRUE, type="Figure")`). The inclusion of ethnocentrism actually makes the low-income variable negative and statistically significant, which would be inconsistent with the economic anxiety arguments. Elsewhere, the exclusion of ethnocentrism as covariate has the slight effect of making the state-level exposure to automation/outsourcing variable statistically significant at the .05 level (see top of the top-left facet for the ANES analyses). However, the effect of the state-level exposure to automation/outsourcing variable is functionally identical when estimated with or without ethnocentrism. It is just slightly more precise when ethnocentrism is excluded.
+
+Overall, the substantial overlap of these economic indicators when estimated with or without ethnocentrism suggests that ethnocentrism does not mediate these economic factors much at all. When combined with the results provided in Tables  `r figr("tab_adm", FALSE, type="Table")`,  `r figr("tab_vdm_harder", FALSE, type="Table")`, and  `r figr("tab_vdm_drain", FALSE, type="Table")`, they are consistent with the fundamental takeaway that these economic factors, on the balance, do not have meaningful effects on anti-immigration attitudes at all.
+
+
+
+## Ethnocentrism Has Larger Magnitude Effects Than All Economic Anxiety Indicators (Even Combined)
+
+My analyses do not necessarily discount some of the arguments from the political economy of immigration opinion framework. However, an attempt toward resolution of this debate should move beyond simple null hypothesis testing and move toward quantities of interest to communicate magnitude effects. My analyses will highlight that ethnocentrism reliably has the largest and most precise effect across all models when compared to the relatively small (if sometimes precise) effects of economic anxiety indicators on attitudes toward immigration.
+
+I first emphasize this with Figure `r figr("fig_pooled", type="Figure")`, a dot-and-whisker plot that pools the coefficients and standard errors for the effect of ethnocentrism and the economic anxiety indicators. The pooling is consistent with Rubin's [-@rubin1987mins] rules for aggregating coefficient estimates and standard errors across, for his case, multiply imputed data sets. Recall that I scaled all non-binary independent variables by two standard deviations prior to estimation, which @gelman2008sri notes is useful for placing both binary and non-binary independent variables on a roughly common scale to allow analysts to get an honest, if preliminary, sense of relative coefficient sizes. Here, Figure `r figr("fig_pooled", type="Figure")` underscores that the effect of ethnocentrism appears to be much larger than any of the economic anxiety indicators. The coefficient is reliably larger with 95% confidence intervals further from zero than any economic anxiety indicator.
+
+
+```{r fig_pooled, eval=T, echo=F, fig.cap="\\label{fig:pooled}Pooled Coefficients and Standard Errors of 'Economic Anxiety' and Ethnocentrism on Attitudes Toward Immigration", fig.width=9, message=F, warning=F}
+fig_pooled
+```
+
+
+
+Post-estimation simulations will communicate a similar finding that ethnocentrism has the largest and most precise effects on eliciting an anti-immigration attitude for a white respondent. I select four models most consistent with the economic anxiety hypothesis, the extent to which they produced coefficients for the objective "economic anxiety" indicator with the highest precision/discernibility from zero. These are models with the county unemployment rate and state-level exposure to automation/outsourcing from Table `r figr("tab_adm", type="Table")` modeling preferences for decreasing immigration levels, the state unemployment rate from Table `r figr("tab_vdm_harder", type="Table")` modeling support for making it harder to immigrate to the U.S., and the CBSA-level exposure to automation/outsourcing from Table `r figr("vdm_drain", type="Table")`modeling whether the respondent thinks legal immigrants are a drain on American society. Thereafter, I create a row for the white male of average age, education, economic indicators, and all social and political values from the model, which I call "typical white male" for shorthand. I then alter some of the covariates. I create a row for the typical white male with a standard deviation increase in ethnocentrism and another row for a two standard deviation increase in ethnocentrism. I next create a row for the typical white male (with the average ethnocentrism score) in the greatest conceivable situation of "economic anxiety." This hypothetical male has the average demographics and social and political values but is unemployed, places himself in the bottom-to-16th percentile of household income, thinks the economy is getting worse, thinks his personal finances/the economy got worse over the past year, and is living in an area with the particular objective economic anxiety indicator two standard deviations above the mean.
+
+I report the results of these simulations in Figure `r figr("fig_pes", type="Figure")`. In all four cases, just a standard deviation increase in ethnocentrism will produce a predicted probability effectively equal to the predicted probability of an anti-immigration attitude when all economic anxiety indicators are at or near their maximum. Allowing the ethnocentrism measure to be near its conceivable maximum (i.e. two standard deviations above the mean) will produce simulated probabilities discernibly greater than the maximum of "economic anxiety" in the analyses on whether the respondent thinks legal immigrants are a drain on American society. This is unsurprising since the results in Table `r figr("tab_vdm_drain", type="Table")` suggest there is no support for the "fiscal burden" argument from the political economy of immigration framework and that attitudes toward thinking immigrants are a "burden" or "drain" are conditioned largely by ethnocentrism.
+
+
+```{r fig_pes, eval=T, echo=FALSE, fig.width=9, fig.height=8, fig.cap="\\label{fig:pes}Simulated Probabilities of Anti-Immigration Attitudes"}
+fig_pes
+```
+
+
+# Conclusion and Discussion
+
+<!-- The conclusion too strongly focuses on providing a summary of the findings. I would recommend to speak much more to the literature. -->
+<!-- a) What do the findings mean in relation of those of extant studies on the determinants of anti-immigration attitudes? -->
+<!-- b) What are suggestions for further research / open questions? -->
+<!-- i. Given the fact that the US is an extreme case in terms of economic anxiety, it might be worth noting that economic anxiety proved largely irrelevant in this 'most likely case' suggests that it is not relevant in any western country. And for instance hypothesize that it does not explain anti-immigration attitudes in European welfare states? -->
+<!-- ii. Since anti-immigration attitudes are linked to welfare chauvinism, how would the current findings inform hypotheses about the link between economic anxiety and welfare chauvinism? And how does this relate to extant studies on this issue? -->
+
+Are attitudes toward immigration extensions of an ethnocentric disposition toward ethnic/racial out-groups? Or can we better understand anti-immigration attitudes from a political economy of immigration framework in which attitudes toward immigration are functions of material self-interest and concerns about the economy in a globalized era? This was already a lively empirical debate in academia, but its salience increased after the election of Donald Trump in 2016. It spawned numerous columns in which journalists and other public intellectuals debated relative effects of "economic anxiety" and negative out-group dispositions in the wake of the 2016 general election. However, a focus on 2016 will be blind to potential spillover effects [@tesler2016prmr], resulting in analyses of opinions that are consistent with both interpretations. Further emphases on isolating "significant" effects take us no closer to comparing relative effect sizes as well.
+
+I offer a comprehensive battery of analyses that explore anti-immigration opinions from 1992 to 2017 in the ANES and VSG data. I take advantage of the group thermometer questions that appear in these data along with the metadata that these surveys provide. This approach creates "economic anxiety" proxies of not just unemployment status and retrospective/prospective assessments about the economy, but macro-level contextual influences such as the unemployment rate and exposure to automation/outsourcing at levels as granular as the the state, the county, the CBSA, and the ZIP code. My findings are unequivocal. Ethnocentrism has the largest and most precise effect on anti-immigration attitudes of any predictor in the model. Economic anxiety indicators are not as robust by comparison. Further, those economic anxiety proxies that do have a discernible effect on immigration opinions belie that the effect size pales in comparison to the effect of ethnocentrism. In this case, a "significant" effect should not be confused with "large" or "important" [c.f. @ziliakmccloskey2008css]. Cherry-picked models most supportive of the "economic anxiety" argument will still produce quantities of interest that reiterate ethnocentrism has the largest and most precise effects on attitudes toward immigration. Informally, they suggest an ounce of ethnocentrism is worth a pound of economic anxiety.
+
+My analyses try to offer a resolution to arguments about the role of "economic anxiety" and ethnocentrism in understanding negative attitudes towards immigration and immigrants among white Americans. What I propose here is consistent with how @hainmuellerhopkins2014pati likened the political economy of immigration opinions to a "zombie theory." Evidence in favor of this perspective is typically weak, inconsistent across space and time, and routinely contradictory within itself. Arguments that rest on an economic intuition of an increased labor market size's negative effect on real wages have not been vindicated in many analyses [@desilvaetal2010emw; @clemensetal2017iral] and results that do purport strong empirical relationships <!--[e.g. @borjas2017wim]--> are sensitive to spurious correlations and omitted variable bias [e.g. @clemenshunt2017lme].<!--Further, there is no robust relationship between unemployment rates and the success of right-wing anti-immigrant parties; higher unemployment rates may actually decrease votes for these parties [@lubbersetal2002erw; @arzheimercarter2006pos].--> The inability of my analyses to produce results at the macro-level robustly consistent with the "economic anxiety" argument suggests that arguments that try to talk up the role of the economy in explaining support for Trump and/or his anti-immigration positions <!-----prominently @kolko2016twsw and @casselman2017sstw at *FiveThirtyEight*-----> read too much into how some economic indicators manifest in anti-immigration opinions or votes for anti-immigrant politicians. We know correlation does not reflect causation, but correlation may not communicate meaningful or substantive effects either and we should be reticent to read "substance" into the "significance" that we cherry-pick [c.f. @ziliakmccloskey2008css]. Scholars and pundits alike that are still interested in discussing a political economy of immigration framework should be mindful of the bigger picture and what better explains the variation in immigration attitudes we observe.
+
+The results I report here provide little support for the political economy of immigration framework and suggest that immigration opinions can be better understood as functions of cultural dispositions like ethnocentrism. Yet, there are still interesting extensions and open questions to explore. For one, the analyses here are confined to the American context. Ethnocentrism, as @kinderkam2009uat measure it, is localized to the United States context in terms of the in-groups and out-groups that comprise the measure. The "economic anxiety" indicators are also readily accessible, both in our longest-running public opinion data sets as well as the macro-level economic data made available by organizations like the Bureau of Labor Statistics and the Internal Revenue Service. When combined with the salience of the "economic anxiety" argument coinciding with Donald Trump's election, this contribution is both timely and important. However, extensions to Western Europe would be welcome additions to what I offer here. Though economic factors were largely irrelevant covariates in understanding attitudes about immigration in this salient American case, there are still important extensions to make to the post-Brexit United Kingdom and countries like France and Germany, where far right movements have enjoyed much greater success after the Great Recession. Welfare states are more generous in Western Europe than they are in the U.S., implying "economic anxiety" should not be as strong in Western Europe as it is in the United States notwithstanding the lingering effects of the Great Recession. However, an exhaustive empirical examination would be welcome to evaluate this.
+
+This coincides with another interesting extension for the American context. How well does welfare chauvinism in the U.S. coincide with "economic anxiety?" Welfare chauvinism, in which natives are more "deserving" of social assistance while immigrants are "less deserving", is common in Europe [e.g. @andersenbjorklund1990scnc; @vanoorschot2006mdse]. Far-right and nativist groups---like the UK Independence Party, National Front (France), and Alternative for Germany---seem to acknowledge this by building in explicit welfare chauvinism into their platforms. This is partly strategic from these groups since immigration in Europe, like immigration in the United States, helps curb some of the negative effects of population decline and population ageing. These groups thus promise more social support, if at the expense of social support for non-natives [c.f. @vadlamannatikelly2017wc]. How well does this argument extend to the United States, where anti-immigration opinion has increasingly found a home with a Republican Party whose primary fiscal aims involve curtailing the supply of social assistance from the government? U.S. social assistance programs are designed with choice architecture in mind [c.f. @thalersunstein2008n]. This makes institutionalizing welfare chauvinism much more difficult. However, much of the intrigue here is empirical. Ethnocentrism coincides with more anti-immigration attitudes, but do those same people score higher in welfare chauvinism relative to those who score lower in ethnocentrism? How much heterogeneity exists on attitudes toward tax-and-transfer policies among those who endorse anti-immigration opinions? The results here could greatly inform how much tension exists among "conservative" anti-immigration ethnochauvinists and "conservative" attitudes toward the fiscal priorities of the American government.
+
+
+<!-- \newpage -->
+
+<!-- # References -->
+
+<!-- \setlength{\parindent}{-0.2in} -->
+<!-- \setlength{\leftskip}{0.2in} -->
+<!-- \setlength{\parskip}{8pt} -->
+<!-- \vspace*{-0.2in} -->
+<!-- \noindent -->
+<!-- \singlespacing -->
+
+<!-- <div id="refs"></div> -->
+
+<!-- \newpage -->
+
+<!-- # Tables and Figures -->
+
+<!-- \small -->
+
+
+
+<!-- \normalsize -->
+
+<!-- \newpage -->
+
+
+
+<!-- \newpage -->
+
+
+
+<!-- \newpage -->
+
+
+
+<!-- \newpage -->
+
+
+
+
+<!-- \newpage -->
+
+
+
+<!-- \newpage -->
+

@@ -1,9 +1,9 @@
-"Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2017"
+Economic Anxiety or Ethnocentrism? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2017
 =======================================================================
 
 
 
-*Conditionally accepted at [Social Science Journal](https://www.journals.elsevier.com/the-social-science-journal). Note: a previous version of this paper was known as "Economic Anxiety or Racial Resentment? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2016." Some feedback suggested refocusing on ethnocentrism in lieu of racial resentment. This made the paper a better academic fit (understandably so) but second-order latent concepts are what they are. That would, however, explain the directory name of `earr`.*
+*Forthcoming at [Social Science Journal](https://www.journals.elsevier.com/the-social-science-journal). Note: a previous version of this paper was known as "Economic Anxiety or Racial Resentment? An Evaluation of Attitudes Toward Immigration in the U.S. From 1992 to 2016." Some feedback suggested refocusing on ethnocentrism in lieu of racial resentment. This made the paper a better academic fit (understandably so) but second-order latent concepts are what they are. That would, however, explain the directory name of `earr`.*
 
 *Related*:
 
